@@ -1388,21 +1388,6 @@ Edit the `.ignore` file to customize what gets included in your repomap.
                         content += f"- {cls.description}\n"
                     content += "\n"
         
-        # Add complexity insights
-        if self.file_analyses:
-            content += "\n### Complexity Insights\n"
-            
-            complexities = [(analysis.file_path, analysis.complexity_score) 
-                          for analysis in self.file_analyses.values() 
-                          if analysis.complexity_score is not None]
-            
-            if complexities:
-                complexities.sort(key=lambda x: x[1], reverse=True)
-                content += "Files by complexity (1=simple, 10=complex):\n\n"
-                
-                for file_path, score in complexities[:10]:  # Top 10 most complex
-                    rel_path = os.path.relpath(file_path, self.project_path)
-                    content += f"- **{rel_path}**: {score}/10\n"
         
         return content
 
