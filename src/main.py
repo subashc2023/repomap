@@ -1498,7 +1498,7 @@ class ProjectTracker:
             return True
     
     @handle_errors("removing project")
-    def remove_project(self, project_path: str):
+    def remove_project(self, project_path: str, remove_files: bool = True):
         """Remove a project from tracking."""
         with self._projects_lock:
             if project_path not in self.projects:
@@ -1520,14 +1520,15 @@ class ProjectTracker:
             # Cancel any pending analysis
             self.debouncer.debounce(project_path, lambda: None)
             
-            # Clean up generated files
-            for filename in AppConstants.GENERATED_FILES:
-                file_path = os.path.join(project_path, filename)
-                if os.path.exists(file_path):
-                    try:
-                        os.remove(file_path)
-                    except Exception as e:
-                        logging.warning(f"Could not remove {filename}: {e}")
+            # Clean up generated files if requested
+            if remove_files:
+                for filename in AppConstants.GENERATED_FILES:
+                    file_path = os.path.join(project_path, filename)
+                    if os.path.exists(file_path):
+                        try:
+                            os.remove(file_path)
+                        except Exception as e:
+                            logging.warning(f"Could not remove {filename}: {e}")
             
             self._save_config()
     
@@ -2254,12 +2255,38 @@ class EventController:
         """Remove selected folder from tracking."""
         selected = self.project_list_view.get_selected_project()
         if selected:
-            result = messagebox.askyesno(
-                "Confirm Removal",
-                f"Remove tracking for:\n{selected}\n\nThis will also delete repomap.md and .ignore files."
-            )
-            if result:
-                self.project_tracker.remove_project(selected)
+            # Custom confirmation dialog with option to delete generated files
+            root = self.remove_button.winfo_toplevel()
+            dialog = tk.Toplevel(root)
+            dialog.title("Confirm Removal")
+            dialog.transient(root)
+            dialog.grab_set()
+            # Message
+            msg = ttk.Label(dialog, text=f"Remove tracking for:\n{selected}", justify="left")
+            msg.pack(padx=20, pady=(20, 10))
+            # Checkbox for deleting files
+            remove_var = tk.BooleanVar(value=True)
+            chk = ttk.Checkbutton(dialog, text="Also delete repomap.md and .ignore files", variable=remove_var)
+            chk.pack(padx=20, pady=(0, 10))
+            # Buttons
+            btn_frame = ttk.Frame(dialog)
+            btn_frame.pack(pady=(0, 20))
+            response = {"confirmed": False}
+            def on_remove():
+                response["confirmed"] = True
+                dialog.destroy()
+            def on_cancel():
+                dialog.destroy()
+            remove_btn = ttk.Button(btn_frame, text="Remove", command=on_remove)
+            remove_btn.pack(side=tk.LEFT, padx=(0, 10))
+            cancel_btn = ttk.Button(btn_frame, text="Cancel", command=on_cancel)
+            cancel_btn.pack(side=tk.LEFT)
+            # Ensure appropriate sizing
+            dialog.update_idletasks()
+            dialog.geometry(f"{dialog.winfo_width()}x{dialog.winfo_height()}")
+            root.wait_window(dialog)
+            if response["confirmed"]:
+                self.project_tracker.remove_project(selected, remove_var.get())
                 self.status_updater.update_general_status(f"Removed folder: {os.path.basename(selected)}")
         else:
             messagebox.showwarning("Warning", "Please select a folder to remove")
