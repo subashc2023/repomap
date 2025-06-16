@@ -1300,8 +1300,7 @@ Edit the `.ignore` file to customize what gets included in your repomap.
 
 *When enabled, this section will include:*
 - Function definitions with parameters and descriptions
-- Class structures and methods  
-- Code complexity insights
+- Class structures and methods 
 - Import dependencies
 - Detailed file-by-file analysis
 """
