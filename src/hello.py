@@ -467,10 +467,11 @@ class RepomapApp:
                 
                 # Generate and add filetree
                 f.write(f"## Filetree\n\n")
+                f.write("```\n")
                 tree_lines = self.generate_filetree(folder_path)
                 for line in tree_lines:
                     f.write(f"{line}\n")
-                f.write(f"\n")
+                f.write("```\n\n")
                 
                 # Add AI analysis results if available
                 if folder_info.get('ai_analysis') and folder_info.get('ai_analysis_complete', False):
