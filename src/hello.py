@@ -597,10 +597,6 @@ class RepomapApp:
             if self.is_ignored(path, folder_path, gitignore_patterns):
                 return
             
-            # Always ignore .git directory and __pycache__
-            if self.should_ignore_implicitly(path):
-                return
-            
             # Get display name
             display_name = os.path.basename(path)
             
@@ -666,7 +662,10 @@ class RepomapApp:
             self.folders = []
     
     def is_ignored(self, file_path, folder_path, gitignore_patterns):
-        """Check if a file or directory should be ignored based on .gitignore patterns"""
+        """Check if a file or directory should be ignored based on .gitignore patterns or implicit rules."""
+        if self.should_ignore_implicitly(file_path):
+            return True
+            
         rel_path = os.path.relpath(file_path, folder_path)
         
         for pattern, pattern_folder in gitignore_patterns:
@@ -699,13 +698,12 @@ class RepomapApp:
             # Prune ignored directories from dirs list to prevent walking into them
             dirs[:] = [
                 d for d in dirs 
-                if not self.is_ignored(os.path.join(root, d), folder_path, gitignore_patterns) 
-                and not self.should_ignore_implicitly(os.path.join(root, d))
+                if not self.is_ignored(os.path.join(root, d), folder_path, gitignore_patterns)
             ]
             
             for file in files:
                 file_path = os.path.join(root, file)
-                if not self.is_ignored(file_path, folder_path, gitignore_patterns) and not self.should_ignore_implicitly(file_path):
+                if not self.is_ignored(file_path, folder_path, gitignore_patterns):
                     yield file_path
 
     def count_files(self, folder_path):
@@ -715,7 +713,7 @@ class RepomapApp:
     def should_ignore_implicitly(self, path):
         """Check if a path should be ignored implicitly (not based on gitignore)"""
         basename = os.path.basename(path)
-        return basename in ['.git', '__pycache__']
+        return basename in ['.git', '__pycache__', 'repomap.md']
     
     def get_folder_size(self, folder_path):
         total_size = 0

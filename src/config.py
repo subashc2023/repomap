@@ -1,3 +1,5 @@
+AI_MODEL_NAME = "gemini-2.5-flash"
+
 # Default gitignore patterns for when no .gitignore exists
 DEFAULT_GITIGNORE_PATTERNS = [
     # Repomap generated files
@@ -166,7 +168,6 @@ DEFAULT_GITIGNORE_PATTERNS = [
 ]
 
 # AI Analysis Configuration
-AI_MODEL_NAME = "gemini-2.5-pro"
 AI_MAX_WORKERS = 5
 
 SUPPORTED_CODE_EXTENSIONS = {
@@ -178,67 +179,42 @@ SUPPORTED_CODE_EXTENSIONS = {
 }
 
 AI_PROMPT_TEMPLATE = """
-Analyze this code file and return ONLY a valid JSON object with the following structure:
+Analyze the code for `{file_name}` and return ONLY a valid JSON object summarizing its structure.
 
+**JSON Structure:**
 {{
     "classes": [
         {{
             "name": "ClassName",
-            "description": "brief description of what this class does",
+            "description": "A brief, one-sentence summary of the class.",
             "methods": [
-                {{
-                    "name": "method_name",
-                    "signature": "method_name(self, param1: type, param2: type) -> return_type",
-                    "description": "what this method does"
-                }}
+                {{"name": "method_name", "signature": "full_signature() -> type", "description": "..."}}
             ],
             "class_variables": [
-                {{
-                    "name": "variable_name",
-                    "type": "type",
-                    "description": "what this class variable stores"
-                }}
+                {{"name": "variable_name", "type": "...", "description": "..."}}
             ]
         }}
     ],
     "standalone_functions": [
-        {{
-            "name": "function_name",
-            "signature": "function_name(param1: type, param2: type) -> return_type",
-            "description": "what this standalone function does"
-        }}
+        {{"name": "function_name", "signature": "...", "description": "..."}}
     ],
     "module_constants": [
-        {{"name": "CONSTANT_NAME", "value": "value", "description": "what this constant represents"}}
+        {{"name": "CONSTANT_NAME", "value": "...", "description": "..."}}
     ],
     "module_variables": [
-        {{"name": "variable_name", "type": "type", "description": "what this module-level variable stores"}}
+        {{"name": "variable_name", "type": "...", "description": "..."}}
     ]
 }}
 
-Rules:
-- Return ONLY the JSON object, no other text
-- Group methods under their respective classes
-- Put functions that are NOT inside classes in "standalone_functions"
-- Include complete signatures with parameter types and return types
-- For class methods, include 'self' in the signature
-- Focus on meaningful descriptions, not obvious ones
-- For class_variables, include important instance/class variables
-- For module_constants/variables, only include important ones
-- If a category is empty, use an empty array []
-- Keep descriptions concise but informative
-- Don't describe obvious parameters like 'self'
+**Key Instructions:**
+1.  **Signatures**: Provide the full function/method signature.
+2.  **Descriptions**: Keep them concise and meaningful.
+3.  **Summarize Large Values**: For variables/constants with large values (e.g., long lists, multi-line strings), OMIT the `value` field and summarize the content in the `description`.
+4.  **Data/Config Files**: For non-code files, describe the data's purpose under `module_constants` or `module_variables`.
+5.  **Empty Categories**: If a category has no items, use an empty array `[]`.
 
-IMPORTANT: For configuration files, data files, or files with simple data structures:
-- If the file contains lists, dictionaries, or other data structures, describe their purpose
-- For configuration constants, explain what they configure or control
-- For data files, describe what kind of data they contain
-- Even simple files should have meaningful descriptions of their content and purpose
-- For files that only contain constants or data structures (no classes/functions), put them in module_constants
-- Examples: DEFAULT_GITIGNORE_PATTERNS should be documented as a module_constant explaining it's a list of gitignore patterns
-- Configuration constants should be documented with their purpose and what they control
-
-File: {file_name}
-Content:
+**File Content:**
+```
 {file_content}
+```
 """ 
