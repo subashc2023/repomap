@@ -1,0 +1,50 @@
+# Repomap Ignore File
+# This file was automatically created by copying your .gitignore
+# and adding some default patterns. You can edit this file to
+# customize what gets included in your repomap analysis.
+
+# Repomap generated files (automatically ignored):
+repomap.md
+.ignore
+
+# Common directories to ignore:
+.git/
+__pycache__/
+node_modules/
+.vscode/
+.idea/
+dist/
+build/
+.pytest_cache/
+.mypy_cache/
+.tox/
+
+# Patterns copied from .gitignore:
+
+# Python-generated files
+__pycache__/
+*.py[oc]
+build/
+dist/
+wheels/
+*.egg-info
+
+# Virtual environments
+.venv
+
+# Additional patterns for repomap (you can edit these):
+*.log
+*.tmp
+*.temp
+*.cache
+*.pyc
+*.pyo
+*.pyd
+*.so
+*.egg-info/
+.DS_Store
+Thumbs.db
+.env
+.env.local
+*.min.js
+*.min.css
