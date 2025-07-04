@@ -8,7 +8,7 @@
 - **Path**: `C:/workspace/environment/repomap`
 - **File Count**: 9 files
 - **Size**: 0.12 MB
-- **Generated**: 2025-07-03 23:09:36
+- **Generated**: 2025-07-03 23:12:04
 - **AI Analysis**: Complete (3 files analyzed)
 
 ## Filetree
@@ -20,7 +20,7 @@
 ├── .gitignore [13 lines]
 ├── .python-version [1 lines]
 ├── pyproject.toml [12 lines]
-├── README.md [12 lines]
+├── README.md [13 lines]
 ├── requirements.txt [1 lines]
 ├── run.py [23 lines]
 └── uv.lock [760 lines]
@@ -37,145 +37,85 @@
 ### src\config.py
 
 **Module Constants:**
-- `DEFAULT_GITIGNORE_PATTERNS` = ["repomap.md", "node_modules/", "venv/", "env/", ".venv/", ".env/", "__pycache__/", "*.pyc", "*.pyo", "*.pyd", ".Python", "pip-log.txt", "pip-delete-this-directory.txt", ".tox/", ".coverage", ".pytest_cache/", "build/", "dist/", "*.egg-info/", "*.egg", "target/", "out/", "bin/", "obj/", "Debug/", "Release/", "x64/", "x86/", ".vscode/", ".idea/", "*.swp", "*.swo", "*~", ".DS_Store", "Thumbs.db", "*.sublime-project", "*.sublime-workspace", "*.log", "logs/", "log/", "*.tmp", "*.temp", ".tmp/", ".temp/", ".DS_Store?", "._*", ".Spotlight-V100", ".Trashes", "ehthumbs.db", "package-lock.json", "yarn.lock", "composer.lock", "Pipfile.lock", "poetry.lock", ".env.local", ".env.development.local", ".env.test.local", ".env.production.local", "*.db", "*.sqlite", "*.sqlite3", "*.bak", "*.backup", "*~", "*.com", "*.class", "*.dll", "*.exe", "*.o", "*.so", "*.dylib", "*.7z", "*.dmg", "*.gz", "*.iso", "*.jar", "*.rar", "*.tar", "*.zip", "docs/_build/", "site/", "_site/", ".cache/", "cache/", ".parcel-cache/", ".next/", ".nuxt/", "coverage/", ".nyc_output/", "htmlcov/", ".ipynb_checkpoints", ".envrc", ".direnv/", "*.tfstate", "*.tfstate.*", ".terraform/", ".dockerignore", "*.kubeconfig", ".aws/", ".gcloud/", ".azure/"] - A comprehensive list of default file and directory patterns to ignore when a project's .gitignore file is missing. This helps exclude common temporary, build, and environment-specific files from analysis.
-- `AI_MODEL_NAME` = gemini-2.5-pro - Specifies the name of the AI model to be used for code analysis tasks.
-- `AI_MAX_WORKERS` = 5 - Defines the maximum number of concurrent workers (e.g., threads or processes) to use for parallel AI analysis.
-- `SUPPORTED_CODE_EXTENSIONS` = {'.py', '.js', '.ts', '.jsx', '.tsx', '.java', '.cpp', '.c', '.h', '.hpp', '.cs', '.php', '.rb', '.go', '.rs', '.swift', '.kt', '.scala', '.clj', '.hs', '.ml', '.fs', '.vb', '.sql', '.r', '.m', '.mm', '.pl', '.sh', '.bash', '.zsh', '.fish', '.ps1', '.bat', '.cmd', '.lua', '.vim', '.el', '.scm', '.rkt', '.dart', '.nim', '.zig', '.v', '.sv', '.vhd'} - A set of file extensions that are considered to be source code and are eligible for analysis by the tool.
-- `AI_PROMPT_TEMPLATE` = 
+- `DEFAULT_GITIGNORE_PATTERNS` = ['repomap.md', 'node_modules/', 'venv/', ...] - A comprehensive list of file and directory patterns used as a default .gitignore configuration. This is applied when no .gitignore file is found in the target repository to exclude common build artifacts, dependencies, IDE files, and other non-source files from analysis.
+- `AI_MODEL_NAME` = gemini-2.5-pro - Specifies the identifier for the AI model to be used for code analysis tasks.
+- `AI_MAX_WORKERS` = 5 - Sets the maximum number of concurrent workers (threads or processes) for performing AI analysis, controlling the level of parallelism.
+- `SUPPORTED_CODE_EXTENSIONS` = {'.py', '.js', '.ts', '.jsx', '.tsx', ...} - A set containing file extensions that are considered to be source code. Only files with these extensions will be processed for analysis.
+- `AI_PROMPT_TEMPLATE` = """
 Analyze this code file and return ONLY a valid JSON object with the following structure:
-
-{{
-    "classes": [
-        {{
-            "name": "ClassName",
-            "description": "brief description of what this class does",
-            "methods": [
-                {{
-                    "name": "method_name",
-                    "signature": "method_name(self, param1: type, param2: type) -> return_type",
-                    "description": "what this method does"
-                }}
-            ],
-            "class_variables": [
-                {{
-                    "name": "variable_name",
-                    "type": "type",
-                    "description": "what this class variable stores"
-                }}
-            ]
-        }}
-    ],
-    "standalone_functions": [
-        {{
-            "name": "function_name",
-            "signature": "function_name(param1: type, param2: type) -> return_type",
-            "description": "what this standalone function does"
-        }}
-    ],
-    "module_constants": [
-        {{"name": "CONSTANT_NAME", "value": "value", "description": "what this constant represents"}}
-    ],
-    "module_variables": [
-        {{"name": "variable_name", "type": "type", "description": "what this module-level variable stores"}}
-    ]
-}}
-
-Rules:
-- Return ONLY the JSON object, no other text
-- Group methods under their respective classes
-- Put functions that are NOT inside classes in "standalone_functions"
-- Include complete signatures with parameter types and return types
-- For class methods, include 'self' in the signature
-- Focus on meaningful descriptions, not obvious ones
-- For class_variables, include important instance/class variables
-- For module_constants/variables, only include important ones
-- If a category is empty, use an empty array []
-- Keep descriptions concise but informative
-- Don't describe obvious parameters like 'self'
-
-IMPORTANT: For configuration files, data files, or files with simple data structures:
-- If the file contains lists, dictionaries, or other data structures, describe their purpose
-- For configuration constants, explain what they configure or control
-- For data files, describe what kind of data they contain
-- Even simple files should have meaningful descriptions of their content and purpose
-- For files that only contain constants or data structures (no classes/functions), put them in module_constants
-- Examples: DEFAULT_GITIGNORE_PATTERNS should be documented as a module_constant explaining it's a list of gitignore patterns
-- Configuration constants should be documented with their purpose and what they control
-
-File: {file_name}
-Content:
-{file_content}
- - The template for the prompt sent to the AI model. It provides instructions, the required JSON output structure, and placeholders for the file name and content.
+...
+""" - A multi-line string template for the prompt sent to the AI model. It defines the analysis task, the required JSON output structure, and the rules for the AI's response. It includes placeholders for the file name and content.
 
 ---
 
 ### src\hello.py
 
 **Classes:**
-- **`FileChangeHandler`** - Handles file system events (modify, create, delete) for a specific folder using watchdog. It debounces events to avoid rapid re-analysis and triggers updates in the main application.
-  - `__init__(self, app, folder_path)` - Initializes the file event handler with a reference to the main application and the folder path to watch.
-  - `set_folder_index(self, index)` - Updates the index of the folder this handler is responsible for, which is used to locate its data in the main app.
-  - `on_modified(self, event)` - Handles file modification events. If a non-ignored code file is changed, it's added to a pending list for a debounced AI re-analysis.
-  - `on_created(self, event)` - Handles file creation events. If a code file is created, it's scheduled for AI analysis. Triggers a full metadata and filetree update.
-  - `on_deleted(self, event)` - Handles file deletion events. Removes the AI analysis data for the deleted file and triggers a full metadata and filetree update.
-  - `trigger_full_update(self)` - Schedules a debounced full folder update, which includes re-calculating metadata and regenerating the filetree, but does not re-run AI analysis on all files.
-  - `perform_full_update(self)` - Executes a full update of folder metadata (file count, size, filetree), updates the RepoMap.md file, and refreshes the UI.
-  - `analyze_pending_files(self)` - Analyzes all files in the pending list using the AI, merges the new analysis data with existing data, and updates the application state and UI.
+- **`FileChangeHandler`** - Handles file system events (modify, create, delete) for a specific folder to trigger re-analysis automatically. It uses debouncing to avoid excessive updates.
+  - `__init__(self, app: 'RepomapApp', folder_path: str)` - Initializes the file change handler with a reference to the main application and the folder path to watch.
+  - `set_folder_index(self, index: int) -> None` - Sets the index of the folder this handler is watching, used to update the correct data in the main app.
+  - `on_modified(self, event) -> None` - Handles file modification events. It adds the changed file to a pending set and schedules a debounced analysis.
+  - `on_created(self, event) -> None` - Handles file creation events. If it's a code file, it schedules a debounced analysis. It always triggers a full metadata and filetree update.
+  - `on_deleted(self, event) -> None` - Handles file deletion events. It removes the file's analysis data from the application's state and triggers a full metadata and filetree update.
+  - `trigger_full_update(self) -> None` - Schedules a debounced update of the folder's metadata and filetree, canceling any previously pending updates.
+  - `perform_full_update(self) -> None` - Performs the actual folder update (metadata, filetree, RepoMap.md) after the debounce timer expires. This does not re-run AI analysis.
+  - `analyze_pending_files(self) -> None` - Triggers AI analysis for all files that have changed, merges the new analysis with existing data, and updates the application state and UI.
   - `app` (RepomapApp) - A reference to the main application instance.
-  - `folder_path` (str) - The absolute path of the folder being watched.
-  - `pending_files` (set) - A set of file paths that have been modified and are awaiting analysis.
-  - `debounce_timer` (tkinter.after_id) - The ID for the scheduled debounced analysis task, allowing it to be cancelled.
+  - `folder_path` (str) - The absolute path to the folder being watched.
+  - `pending_files` (set) - A set of file paths that have changed and are awaiting debounced analysis.
+  - `debounce_timer` (str | None) - The timer ID for the tkinter `after` method, used for debouncing events.
 
-- **`RepomapApp`** - The main application class for the Repomap GUI. It manages tracked folders, handles UI events, orchestrates AI analysis, and generates 'repomap.md' files.
-  - `__init__(self)` - Initializes the main Tkinter window, sets up persistence, loads saved data, and creates the UI components.
-  - `create_toolbar(self)` - Creates the top toolbar frame containing the 'Add Folder' button and AI status indicator.
-  - `select_folder(self)` - Opens a system dialog for the user to select a folder to add.
-  - `add_folder(self, folder_path: str)` - Adds a folder to the application, gathers its initial metadata, starts file watching, and initiates a background AI analysis.
-  - `run_ai_analysis_async(self, folder_path: str, folder_index: int)` - Runs the full AI analysis for a folder in a background thread to keep the UI responsive. Updates the folder data and UI upon completion.
-  - `load_gitignore_patterns(self, folder_path: str) -> list` - Loads patterns from .gitignore files found in the specified folder and its parent directories. Creates a default .gitignore if none is found.
-  - `create_default_gitignore(self, folder_path: str)` - Creates a new .gitignore file in the specified folder with a set of default patterns that are relevant to the folder's contents.
-  - `add_repomap_to_gitignore(self, gitignore_path: str, existing_content: str)` - Appends 'repomap.md' to an existing .gitignore file to prevent it from being tracked by git.
-  - `pattern_matches_existing(self, pattern: str, all_items: set) -> bool` - Checks if a given gitignore pattern matches any of the existing file or directory paths in a repository.
-  - `create_repomap_md(self, folder_path: str, folder_info: dict)` - Generates or updates the 'repomap.md' file in a folder, containing metadata, filetree, and detailed AI analysis results.
-  - `get_current_timestamp(self) -> str` - Returns the current date and time as a formatted string.
-  - `count_file_lines(self, file_path: str) -> int` - Counts the total number of lines in a given file.
-  - `generate_filetree(self, folder_path: str) -> list` - Creates a hierarchical list of strings representing the folder's file structure, including line counts and respecting .gitignore rules.
-  - `save_folders(self)` - Saves the current list of tracked folders and their data to a JSON file for persistence.
-  - `load_saved_folders(self)` - Loads the list of tracked folders from the persistent JSON file on application startup.
-  - `is_ignored(self, file_path: str, folder_path: str, gitignore_patterns: list) -> bool` - Determines if a file or directory should be ignored based on the collected .gitignore patterns.
-  - `_walk_repository_files(self, folder_path: str) -> generator` - A generator that yields all file paths in a folder, excluding directories and files specified in .gitignore.
-  - `count_files(self, folder_path: str) -> int` - Counts the total number of non-ignored files in a folder.
+- **`RepomapApp`** - The main application class for the Repomap GUI, built with tkinter. It manages tracked folders, handles user interactions, orchestrates AI analysis, and displays the results.
+  - `__init__(self)` - Initializes the application, sets up the main window, loads saved data, and builds the UI.
+  - `create_toolbar(self) -> None` - Creates the top toolbar UI element containing the 'Add Folder' button and AI status indicator.
+  - `select_folder(self) -> None` - Opens a system file dialog to allow the user to select a folder to track.
+  - `add_folder(self, folder_path: str) -> None` - Adds a new folder to be tracked, performs initial metadata gathering, starts file watching, and initiates background AI analysis.
+  - `run_ai_analysis_async(self, folder_path: str, folder_index: int) -> None` - Runs the full AI analysis for a folder in a separate background thread to keep the UI responsive.
+  - `load_gitignore_patterns(self, folder_path: str) -> list` - Loads and parses .gitignore patterns from the specified folder and its parent directories.
+  - `create_default_gitignore(self, folder_path: str) -> None` - Creates a default .gitignore file in the folder if one does not exist, populated with relevant patterns.
+  - `add_repomap_to_gitignore(self, gitignore_path: str, existing_content: str) -> None` - Appends 'repomap.md' to an existing .gitignore file to prevent it from being committed to version control.
+  - `pattern_matches_existing(self, pattern: str, all_items: set) -> bool` - Checks if a given gitignore pattern matches any of the existing files or directories in the project.
+  - `create_repomap_md(self, folder_path: str, folder_info: dict) -> None` - Generates or updates the `repomap.md` file in a folder, containing its information, filetree, and AI analysis results.
+  - `get_current_timestamp(self) -> str` - Returns the current system time as a formatted string.
+  - `count_file_lines(self, file_path: str) -> int` - Counts and returns the number of lines in a given text file.
+  - `generate_filetree(self, folder_path: str) -> list` - Generates a list of strings representing the hierarchical filetree of a folder, excluding ignored files and including line counts.
+  - `save_folders(self) -> None` - Saves the current list of tracked folders and their state to a persistent JSON file.
+  - `load_saved_folders(self) -> None` - Loads the list of tracked folders from the persistent JSON file on application startup.
+  - `is_ignored(self, file_path: str, folder_path: str, gitignore_patterns: list) -> bool` - Checks if a file path should be ignored based on the loaded gitignore patterns.
+  - `_walk_repository_files(self, folder_path: str) -> Generator[str, None, None]` - A generator that yields all non-ignored file paths in a folder, respecting .gitignore rules.
+  - `count_files(self, folder_path: str) -> int` - Counts the total number of non-ignored files within a given folder path.
   - `should_ignore_implicitly(self, path: str) -> bool` - Checks if a path should be implicitly ignored (e.g., '.git', '__pycache__').
-  - `get_folder_size(self, folder_path: str) -> str` - Calculates the total size of all non-ignored files in a folder and returns it as a formatted string (e.g., '1.23 MB').
-  - `show_empty_state(self)` - Displays an initial UI state with an 'Add a folder' button when no folders are being tracked.
-  - `update_display(self)` - Refreshes the main content area of the UI, redrawing the folder cards for all tracked folders.
-  - `create_folder_card(self, parent: tk.Widget, folder: dict, index: int)` - Creates a single UI widget ('card') to display information about a tracked folder.
-  - `_show_confirmation_dialog(self, title: str, message: str, delete_repomap_option: bool, confirm_callback: callable)` - Displays a modal confirmation dialog to the user with customizable text and options.
-  - `remove_folder(self, index: int)` - Removes a folder from the application after user confirmation. Also stops file watching and can optionally delete the 'repomap.md' file.
-  - `setup_ai_analysis(self)` - Checks for necessary AI libraries and API keys (GEMINI_API_KEY or GOOGLE_API_KEY) and enables or disables the AI feature accordingly.
-  - `setup_file_watching(self)` - Initializes file watching services for all folders loaded at startup.
-  - `start_watching_folder(self, folder_path: str, folder_index: int)` - Starts a new watchdog observer to monitor a specific folder for file system changes.
-  - `stop_watching_folder(self, folder_path: str)` - Stops and cleans up the watchdog observer for a specific folder.
-  - `update_folder_watcher_index(self, folder_path: str, new_index: int)` - Updates the index stored in a file watcher's handler, necessary when folders are removed.
-  - `analyze_file_with_ai(self, file_path: str, folder_path: str, gitignore_patterns: list) -> dict | None` - Sends the content of a single file to the Gemini API, requests a JSON analysis of its structure, and parses the response.
-  - `parse_fallback_analysis(self, response_text: str, file_path: str, folder_path: str) -> dict` - Provides a simple text-based fallback parser for the AI response in case the primary JSON parsing fails.
-  - `analyze_folder_with_ai(self, folder_path: str) -> list` - Analyzes all supported code files in a folder concurrently using a thread pool to make parallel API requests.
-  - `is_code_file(self, file_path: str) -> bool` - Checks if a given file has a supported code extension and should be sent for AI analysis.
-  - `run(self)` - Starts the Tkinter main event loop and ensures file watchers are cleaned up when the application closes.
-  - `cleanup_file_watchers(self)` - Stops all active file system watchers.
-  - `root` (tk.Tk) - The main root window of the Tkinter application.
-  - `storage_file` (str) - The file path used to persist the list of tracked folders and their data.
-  - `folders` (list[dict]) - A list of dictionaries, where each dictionary stores the metadata and analysis results for a tracked folder.
-  - `file_watchers` (dict) - A dictionary mapping folder paths to their corresponding (observer, handler) tuples for file system monitoring.
-  - `ai_enabled` (bool) - A flag indicating whether AI analysis is available and configured.
+  - `get_folder_size(self, folder_path: str) -> str` - Calculates the total size of all non-ignored files in a folder and returns it as a formatted string (e.g., '12.34 MB').
+  - `show_empty_state(self) -> None` - Displays a welcome message and an 'Add Folder' button in the UI when no folders are currently being tracked.
+  - `update_display(self) -> None` - Refreshes the main UI by clearing and redrawing the list of folder cards based on the current application state.
+  - `create_folder_card(self, parent: tk.Widget, folder: dict, index: int) -> None` - Creates a single UI card widget for a tracked folder, displaying its name, path, stats, and a remove button.
+  - `_show_confirmation_dialog(self, title: str, message: str, delete_repomap_option: bool, confirm_callback: callable) -> None` - Displays a generic modal confirmation dialog to the user.
+  - `remove_folder(self, index: int) -> None` - Handles the logic for removing a tracked folder, including showing a confirmation dialog and cleaning up associated resources.
+  - `setup_ai_analysis(self) -> None` - Initializes the AI analysis component by checking for environment variable API keys and configuring the generative AI library.
+  - `setup_file_watching(self) -> None` - Initializes the watchdog file system observers for all folders loaded at startup.
+  - `start_watching_folder(self, folder_path: str, folder_index: int) -> None` - Starts a new watchdog file system observer for a specific folder.
+  - `stop_watching_folder(self, folder_path: str) -> None` - Stops and cleans up the watchdog observer for a specific folder.
+  - `update_folder_watcher_index(self, folder_path: str, new_index: int) -> None` - Updates the folder index stored in a FileChangeHandler, necessary when folders are removed.
+  - `refresh_folder_metadata(self, folder_index: int) -> None` - Manually triggers a refresh of a folder's metadata (file count, size, etc.) and updates the display.
+  - `analyze_file_with_ai(self, file_path: str, folder_path: str, gitignore_patterns: list) -> dict | None` - Analyzes the content of a single file using the configured generative AI API to extract its structure (classes, functions, etc.).
+  - `parse_fallback_analysis(self, response_text: str, file_path: str, folder_path: str) -> dict` - Provides a simple fallback text-based parser for the AI response in case the primary JSON parsing fails.
+  - `analyze_folder_with_ai(self, folder_path: str) -> list` - Orchestrates the AI analysis of all supported code files in a folder using a thread pool for concurrency.
+  - `is_code_file(self, file_path: str) -> bool` - Checks if a file's extension is in the list of supported code file types for AI analysis.
+  - `run(self) -> None` - Starts the tkinter main event loop to run the application and handles cleanup on exit.
+  - `cleanup_file_watchers(self) -> None` - Stops all active watchdog file system observers when the application is closing.
+  - `root` (tk.Tk) - The root tkinter window for the application.
+  - `storage_file` (str) - The path to the JSON file used for persistent storage of folder data.
+  - `folders` (list[dict]) - A list of dictionaries, where each dictionary stores metadata and analysis results for a tracked folder.
+  - `file_watchers` (dict) - A dictionary mapping folder paths to their active `watchdog` observer and handler instances.
+  - `ai_enabled` (bool) - A flag indicating whether AI analysis is configured and available (i.e., an API key was found).
 
 
 **Standalone Functions:**
-- `main() -> None` - The main entry point for the application. It instantiates and runs the RepomapApp.
+- `main() -> None` - The main entry point of the script. It creates an instance of RepomapApp and runs it.
 
 **Module Variables:**
-- `AI_AVAILABLE` (bool) - A boolean flag that is True if the 'google.generativeai' library was successfully imported, indicating AI features can be used.
-- `WATCHDOG_AVAILABLE` (bool) - A boolean flag that is True if the 'watchdog' library was successfully imported, indicating that real-time file monitoring is available.
+- `AI_AVAILABLE` (bool) - A boolean flag indicating if the 'google.generativeai' dependency was successfully imported.
+- `WATCHDOG_AVAILABLE` (bool) - A boolean flag indicating if the 'watchdog' dependency was successfully imported.
 
 ---
 
