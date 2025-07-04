@@ -8,7 +8,7 @@
 - **Path**: `C:/workspace/environment/repomap`
 - **File Count**: 9 files
 - **Size**: 0.12 MB
-- **Generated**: 2025-07-03 23:12:04
+- **Generated**: 2025-07-03 23:12:29
 - **AI Analysis**: Complete (3 files analyzed)
 
 ## Filetree
