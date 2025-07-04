@@ -1,11 +1,12 @@
-# Python-generated files
-__pycache__/
-*.py[oc]
-build/
-dist/
-wheels/
-*.egg-info
+# Auto-generated .gitignore by Repomap
+# Common files and directories to ignore
 
-# Virtual environments
-.venv
-.aider*
+.venv/
+__pycache__/
+*.pyc
+*.pyd
+logs/
+*.exe
+
+# Repomap generated file
+RepoMap.md
