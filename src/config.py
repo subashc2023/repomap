@@ -1,7 +1,7 @@
 # Default gitignore patterns for when no .gitignore exists
 DEFAULT_GITIGNORE_PATTERNS = [
     # Repomap generated files
-    "RepoMap.md",
+    "repomap.md",
     # Dependencies
     "node_modules/",
     "venv/",

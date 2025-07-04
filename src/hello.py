@@ -232,7 +232,6 @@ class RepomapApp:
         
         # Store selected folders
         self.folders = []
-        self.selected_folders = set()  # Track selected folders
         
         # Initialize AI analysis
         self.setup_ai_analysis()
@@ -275,12 +274,6 @@ class RepomapApp:
         self.ai_status_label = tk.Label(toolbar, text=ai_status_text, bg='#1e1e1e', 
                                        fg=ai_status_color, font=('Arial', 10))
         self.ai_status_label.pack(side=tk.LEFT, padx=10, pady=10)
-        
-        # Trash button (right side)
-        self.trash_btn = tk.Button(toolbar, text="🗑️", bg='#1e1e1e', fg='#666666', 
-                                  bd=0, font=('Arial', 16), command=self.delete_selected_folders,
-                                  state=tk.DISABLED)
-        self.trash_btn.pack(side=tk.RIGHT, padx=10, pady=10)
         
     def select_folder(self):
         folder_path = filedialog.askdirectory(title="Select a folder")
@@ -370,8 +363,8 @@ class RepomapApp:
                             if line and not line.startswith('#'):
                                 patterns.append((line, current_path))
                         
-                        # Check if RepoMap.md is already in this gitignore
-                        if current_path == folder_path and 'RepoMap.md' not in content:
+                        # Check if repomap.md is already in this gitignore
+                        if current_path == folder_path and 'repomap.md' not in content.lower():
                             self.add_repomap_to_gitignore(gitignore_path, content)
                 except (IOError, UnicodeDecodeError):
                     pass
@@ -429,11 +422,11 @@ class RepomapApp:
             pass
     
     def add_repomap_to_gitignore(self, gitignore_path, existing_content):
-        """Add RepoMap.md to an existing .gitignore file"""
+        """Add repomap.md to an existing .gitignore file"""
         try:
             with open(gitignore_path, 'a', encoding='utf-8') as f:
                 f.write("\n# Repomap generated file\n")
-                f.write("RepoMap.md\n")
+                f.write("repomap.md\n")
         except IOError:
             # Silently fail if we can't modify the file
             pass
@@ -452,8 +445,8 @@ class RepomapApp:
         return False
     
     def create_repomap_md(self, folder_path, folder_info):
-        """Create a RepoMap.md file with folder information"""
-        repomap_path = os.path.join(folder_path, 'RepoMap.md')
+        """Create a repomap.md file with folder information"""
+        repomap_path = os.path.join(folder_path, 'repomap.md')
         try:
             with open(repomap_path, 'w', encoding='utf-8') as f:
                 f.write(f"# RepoMap - {folder_info['name']}\n\n")
@@ -782,44 +775,35 @@ class RepomapApp:
         # Only show scrollbar if content exceeds canvas height
         if scrollable_frame.winfo_reqheight() > canvas.winfo_height():
             scrollbar.pack(side="right", fill="y")
-        
-        # Update trash button state
-        self.update_trash_button()
     
     def create_folder_card(self, parent, folder, index):
         # Card frame with selection state
-        card_bg = '#4a4a4a' if index in self.selected_folders else '#3c3c3c'
+        card_bg = '#3c3c3c'
         card = tk.Frame(parent, bg=card_bg, relief=tk.RAISED, bd=1)
         card.pack(fill=tk.X, padx=10, pady=5)
         
-        # Make entire card clickable for selection
-        card.bind('<Button-1>', lambda e: self.toggle_folder_selection(index))
-        
-        # Selection indicator (checkbox-like)
-        select_frame = tk.Frame(card, bg=card_bg)
-        select_frame.pack(side=tk.LEFT, padx=5, pady=5)
-        select_frame.bind('<Button-1>', lambda e: self.toggle_folder_selection(index))
-        
-        select_indicator = tk.Label(select_frame, text="☐" if index not in self.selected_folders else "☑", 
-                                   bg=card_bg, fg='#007acc' if index in self.selected_folders else '#666666',
-                                   font=('Arial', 12))
-        select_indicator.pack()
-        select_indicator.bind('<Button-1>', lambda e: self.toggle_folder_selection(index))
-        
         # Content frame
         content_frame = tk.Frame(card, bg=card_bg)
-        content_frame.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=5)
-        content_frame.bind('<Button-1>', lambda e: self.toggle_folder_selection(index))
+        content_frame.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=10, pady=10)
+
+        # Top frame for title and delete button
+        top_frame = tk.Frame(content_frame, bg=card_bg)
+        top_frame.pack(fill=tk.X)
         
         # Folder name (truncated if too long)
         name = folder['name']
         if len(name) > 30:
             name = name[:27] + "..."
         
-        name_label = tk.Label(content_frame, text=name, bg=card_bg, fg='white', 
+        name_label = tk.Label(top_frame, text=name, bg=card_bg, fg='white', 
                              font=('Arial', 12, 'bold'))
-        name_label.pack(anchor=tk.W, pady=(10, 5))
-        name_label.bind('<Button-1>', lambda e: self.toggle_folder_selection(index))
+        name_label.pack(anchor=tk.W, side=tk.LEFT)
+        
+        # Remove button (individual)
+        remove_btn = tk.Button(top_frame, text="🗑️", bg=card_bg, fg='#ff6b6b', 
+                              bd=0, font=('Arial', 12, 'bold'), 
+                              command=lambda: self.remove_folder(index))
+        remove_btn.pack(side=tk.RIGHT)
         
         # Path (truncated)
         path = folder['path']
@@ -828,25 +812,21 @@ class RepomapApp:
         
         path_label = tk.Label(content_frame, text=path, bg=card_bg, fg='#cccccc', 
                              font=('Arial', 9))
-        path_label.pack(anchor=tk.W, pady=(0, 5))
-        path_label.bind('<Button-1>', lambda e: self.toggle_folder_selection(index))
+        path_label.pack(anchor=tk.W, pady=(5, 5))
         
         # Info frame
         info_frame = tk.Frame(content_frame, bg=card_bg)
-        info_frame.pack(fill=tk.X, pady=(0, 10))
-        info_frame.bind('<Button-1>', lambda e: self.toggle_folder_selection(index))
+        info_frame.pack(fill=tk.X, pady=(5, 0))
         
         # File count
         count_label = tk.Label(info_frame, text=f"Files: {folder['file_count']}", 
                               bg=card_bg, fg='#cccccc', font=('Arial', 9))
         count_label.pack(side=tk.LEFT)
-        count_label.bind('<Button-1>', lambda e: self.toggle_folder_selection(index))
         
         # Size
         size_label = tk.Label(info_frame, text=f"Size: {folder['size']}", 
                              bg=card_bg, fg='#cccccc', font=('Arial', 9))
         size_label.pack(side=tk.LEFT, padx=(20, 0))
-        size_label.bind('<Button-1>', lambda e: self.toggle_folder_selection(index))
         
         # AI Analysis status
         if self.ai_enabled:
@@ -860,14 +840,7 @@ class RepomapApp:
             ai_label = tk.Label(info_frame, text=ai_status, 
                                bg=card_bg, fg=ai_color, font=('Arial', 9))
             ai_label.pack(side=tk.LEFT, padx=(20, 0))
-            ai_label.bind('<Button-1>', lambda e: self.toggle_folder_selection(index))
-        
-        # Remove button (individual) - don't bind selection to this button
-        remove_btn = tk.Button(info_frame, text="×", bg=card_bg, fg='#ff6b6b', 
-                              bd=0, font=('Arial', 12, 'bold'), 
-                              command=lambda: self.remove_folder(index))
-        remove_btn.pack(side=tk.RIGHT)
-        
+
     def _show_confirmation_dialog(self, title, message, delete_repomap_option, confirm_callback):
         """Shows a generic confirmation dialog."""
         dialog = tk.Toplevel(self.root)
@@ -892,10 +865,10 @@ class RepomapApp:
                                 font=('Arial', 11), wraplength=350)
         warning_label.pack(pady=(0, 20))
 
-        # Checkbox for deleting RepoMap.md file
+        # Checkbox for deleting repomap.md file
         delete_repomap_var = tk.BooleanVar()
         if delete_repomap_option:
-            delete_repomap_checkbox = tk.Checkbutton(main_frame, text="Also delete RepoMap.md file from the folder(s)", 
+            delete_repomap_checkbox = tk.Checkbutton(main_frame, text="Also delete repomap.md file from the folder(s)", 
                                                     variable=delete_repomap_var, bg='#2b2b2b', fg='white', 
                                                     selectcolor='#4a4a4a', activebackground='#2b2b2b', 
                                                     activeforeground='white', font=('Arial', 10))
@@ -945,19 +918,18 @@ class RepomapApp:
             # Stop watching the folder
             self.stop_watching_folder(folder_path)
             
-            # Delete RepoMap.md if checkbox is checked
+            # Delete repomap.md if checkbox is checked
             if delete_repomap:
-                repomap_path = os.path.join(folder_path, 'RepoMap.md')
+                repomap_path = os.path.join(folder_path, 'repomap.md')
                 try:
                     if os.path.exists(repomap_path):
                         os.remove(repomap_path)
-                        print(f"Deleted RepoMap.md from {folder_path}")
+                        print(f"Deleted repomap.md from {folder_path}")
                 except Exception as e:
-                    print(f"Failed to delete RepoMap.md from {folder_path}: {e}")
+                    print(f"Failed to delete repomap.md from {folder_path}: {e}")
             
             # Remove from folders list
             del self.folders[index]
-            self.selected_folders.clear()  # Clear selections
             
             # Update watcher indices for remaining folders
             for i, folder_info in enumerate(self.folders):
@@ -965,69 +937,9 @@ class RepomapApp:
             
             self.save_folders()
             self.update_display()
-            self.update_trash_button()
 
         self._show_confirmation_dialog("Delete Folder", message, True, confirm_delete)
-
-    def toggle_folder_selection(self, index):
-        """Toggle selection of a folder"""
-        if index in self.selected_folders:
-            self.selected_folders.remove(index)
-        else:
-            self.selected_folders.add(index)
-        self.update_trash_button()
-        self.update_display()  # Refresh to show selection state
     
-    def delete_selected_folders(self):
-        """Delete all selected folders"""
-        if not self.selected_folders:
-            return
-        
-        folder_count = len(self.selected_folders)
-        message = f"Are you sure you want to remove {folder_count} folder{'s' if folder_count > 1 else ''} from Repomap?"
-
-        def confirm_delete(delete_repomap):
-            # Stop watching all selected folders
-            for index in self.selected_folders:
-                if index < len(self.folders):
-                    folder_path = self.folders[index]['path']
-                    self.stop_watching_folder(folder_path)
-                    
-                    # Delete RepoMap.md if checkbox is checked
-                    if delete_repomap:
-                        repomap_path = os.path.join(folder_path, 'RepoMap.md')
-                        try:
-                            if os.path.exists(repomap_path):
-                                os.remove(repomap_path)
-                                print(f"Deleted RepoMap.md from {folder_path}")
-                        except Exception as e:
-                            print(f"Failed to delete RepoMap.md from {folder_path}: {e}")
-            
-            # Sort indices in reverse order to avoid index shifting
-            indices_to_remove = sorted(self.selected_folders, reverse=True)
-            
-            for index in indices_to_remove:
-                del self.folders[index]
-            
-            self.selected_folders.clear()
-            
-            # Update watcher indices for remaining folders
-            for i, folder_info in enumerate(self.folders):
-                self.update_folder_watcher_index(folder_info['path'], i)
-            
-            self.save_folders()
-            self.update_display()
-            self.update_trash_button()
-
-        self._show_confirmation_dialog("Delete Folders", message, True, confirm_delete)
-    
-    def update_trash_button(self):
-        """Update trash button state based on selections"""
-        if self.selected_folders:
-            self.trash_btn.config(state=tk.NORMAL, fg='#ff6b6b')
-        else:
-            self.trash_btn.config(state=tk.DISABLED, fg='#666666')
-        
     def setup_ai_analysis(self):
         """Setup AI analysis if API keys are available"""
         self.ai_enabled = False
