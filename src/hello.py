@@ -265,8 +265,8 @@ class RepomapApp:
         toolbar.pack_propagate(False)
         
         # Folder button (using text as icon for now)
-        folder_btn = tk.Button(toolbar, text="📁", bg='#1e1e1e', fg='white', 
-                              bd=0, font=('Arial', 16), command=self.select_folder)
+        folder_btn = tk.Button(toolbar, text="Add Folder", bg='#1e1e1e', fg='white', 
+                              bd=0, font=('Arial', 12), command=self.select_folder)
         folder_btn.pack(side=tk.LEFT, padx=10, pady=10)
         
         # AI status indicator
@@ -777,12 +777,11 @@ class RepomapApp:
         canvas.update_idletasks()
         canvas.configure(scrollregion=canvas.bbox("all"))
         
+        canvas.pack(side="left", fill="both", expand=True)
+
         # Only show scrollbar if content exceeds canvas height
-        if canvas.bbox("all")[3] > canvas.winfo_height():
-            canvas.pack(side="left", fill="both", expand=True)
+        if scrollable_frame.winfo_reqheight() > canvas.winfo_height():
             scrollbar.pack(side="right", fill="y")
-        else:
-            canvas.pack(side="left", fill="both", expand=True)
         
         # Update trash button state
         self.update_trash_button()
