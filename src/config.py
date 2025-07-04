@@ -163,4 +163,82 @@ DEFAULT_GITIGNORE_PATTERNS = [
     
     # Azure
     ".azure/",
-] 
+]
+
+# AI Analysis Configuration
+AI_MODEL_NAME = "gemini-2.5-pro"
+AI_MAX_WORKERS = 5
+
+SUPPORTED_CODE_EXTENSIONS = {
+    '.py', '.js', '.ts', '.jsx', '.tsx', '.java', '.cpp', '.c', '.h', '.hpp',
+    '.cs', '.php', '.rb', '.go', '.rs', '.swift', '.kt', '.scala', '.clj',
+    '.hs', '.ml', '.fs', '.vb', '.sql', '.r', '.m', '.mm', '.pl', '.sh',
+    '.bash', '.zsh', '.fish', '.ps1', '.bat', '.cmd', '.lua', '.vim',
+    '.el', '.scm', '.rkt', '.dart', '.nim', '.zig', '.v', '.sv', '.vhd'
+}
+
+AI_PROMPT_TEMPLATE = """
+Analyze this code file and return ONLY a valid JSON object with the following structure:
+
+{{
+    "classes": [
+        {{
+            "name": "ClassName",
+            "description": "brief description of what this class does",
+            "methods": [
+                {{
+                    "name": "method_name",
+                    "signature": "method_name(self, param1: type, param2: type) -> return_type",
+                    "description": "what this method does"
+                }}
+            ],
+            "class_variables": [
+                {{
+                    "name": "variable_name",
+                    "type": "type",
+                    "description": "what this class variable stores"
+                }}
+            ]
+        }}
+    ],
+    "standalone_functions": [
+        {{
+            "name": "function_name",
+            "signature": "function_name(param1: type, param2: type) -> return_type",
+            "description": "what this standalone function does"
+        }}
+    ],
+    "module_constants": [
+        {{"name": "CONSTANT_NAME", "value": "value", "description": "what this constant represents"}}
+    ],
+    "module_variables": [
+        {{"name": "variable_name", "type": "type", "description": "what this module-level variable stores"}}
+    ]
+}}
+
+Rules:
+- Return ONLY the JSON object, no other text
+- Group methods under their respective classes
+- Put functions that are NOT inside classes in "standalone_functions"
+- Include complete signatures with parameter types and return types
+- For class methods, include 'self' in the signature
+- Focus on meaningful descriptions, not obvious ones
+- For class_variables, include important instance/class variables
+- For module_constants/variables, only include important ones
+- If a category is empty, use an empty array []
+- Keep descriptions concise but informative
+- Don't describe obvious parameters like 'self'
+
+IMPORTANT: For configuration files, data files, or files with simple data structures:
+- If the file contains lists, dictionaries, or other data structures, describe their purpose
+- For configuration constants, explain what they configure or control
+- For data files, describe what kind of data they contain
+- Even simple files should have meaningful descriptions of their content and purpose
+- For files that only contain constants or data structures (no classes/functions), put them in module_constants
+- Examples: DEFAULT_GITIGNORE_PATTERNS should be documented as a module_constant explaining it's a list of gitignore patterns
+- Configuration constants should be documented with their purpose and what they control
+
+File: {file_name}
+Content:
+{file_content}
+""" 

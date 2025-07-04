@@ -9,7 +9,13 @@ import threading
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
-from config import DEFAULT_GITIGNORE_PATTERNS
+from config import (
+    DEFAULT_GITIGNORE_PATTERNS, 
+    AI_MODEL_NAME, 
+    AI_PROMPT_TEMPLATE, 
+    AI_MAX_WORKERS,
+    SUPPORTED_CODE_EXTENSIONS
+)
 
 # Try to import AI analysis dependencies
 try:
@@ -692,20 +698,25 @@ class RepomapApp:
         
         return False
     
-    def count_files(self, folder_path):
-        count = 0
+    def _walk_repository_files(self, folder_path):
+        """Generator that yields all non-ignored files in a folder."""
         gitignore_patterns = self.load_gitignore_patterns(folder_path)
-        
         for root, dirs, files in os.walk(folder_path):
-            # Remove ignored directories from dirs list to prevent walking into them
-            dirs[:] = [d for d in dirs if not self.is_ignored(os.path.join(root, d), folder_path, gitignore_patterns) and not self.should_ignore_implicitly(os.path.join(root, d))]
+            # Prune ignored directories from dirs list to prevent walking into them
+            dirs[:] = [
+                d for d in dirs 
+                if not self.is_ignored(os.path.join(root, d), folder_path, gitignore_patterns) 
+                and not self.should_ignore_implicitly(os.path.join(root, d))
+            ]
             
             for file in files:
                 file_path = os.path.join(root, file)
                 if not self.is_ignored(file_path, folder_path, gitignore_patterns) and not self.should_ignore_implicitly(file_path):
-                    count += 1
-        
-        return count
+                    yield file_path
+
+    def count_files(self, folder_path):
+        """Counts the number of non-ignored files in a folder."""
+        return sum(1 for _ in self._walk_repository_files(folder_path))
     
     def should_ignore_implicitly(self, path):
         """Check if a path should be ignored implicitly (not based on gitignore)"""
@@ -714,19 +725,11 @@ class RepomapApp:
     
     def get_folder_size(self, folder_path):
         total_size = 0
-        gitignore_patterns = self.load_gitignore_patterns(folder_path)
-        
-        for root, dirs, files in os.walk(folder_path):
-            # Remove ignored directories from dirs list to prevent walking into them
-            dirs[:] = [d for d in dirs if not self.is_ignored(os.path.join(root, d), folder_path, gitignore_patterns) and not self.should_ignore_implicitly(os.path.join(root, d))]
-            
-            for file in files:
-                file_path = os.path.join(root, file)
-                if not self.is_ignored(file_path, folder_path, gitignore_patterns) and not self.should_ignore_implicitly(file_path):
-                    try:
-                        total_size += os.path.getsize(file_path)
-                    except (OSError, FileNotFoundError):
-                        continue
+        for file_path in self._walk_repository_files(folder_path):
+            try:
+                total_size += os.path.getsize(file_path)
+            except (OSError, FileNotFoundError):
+                continue
         
         # Convert to MB or GB
         if total_size >= 1024**3:  # GB
@@ -866,6 +869,68 @@ class RepomapApp:
                               command=lambda: self.remove_folder(index))
         remove_btn.pack(side=tk.RIGHT)
         
+    def _show_confirmation_dialog(self, title, message, delete_repomap_option, confirm_callback):
+        """Shows a generic confirmation dialog."""
+        dialog = tk.Toplevel(self.root)
+        dialog.title(title)
+        dialog.geometry("400x180")
+        dialog.configure(bg='#2b2b2b')
+        dialog.transient(self.root)
+        dialog.grab_set()
+
+        # Center the dialog
+        dialog.update_idletasks()
+        x = (dialog.winfo_screenwidth() // 2) - (dialog.winfo_width() // 2)
+        y = (dialog.winfo_screenheight() // 2) - (dialog.winfo_height() // 2)
+        dialog.geometry(f"+{x}+{y}")
+
+        # Main frame
+        main_frame = tk.Frame(dialog, bg='#2b2b2b')
+        main_frame.pack(fill=tk.BOTH, expand=True, padx=20, pady=20)
+
+        # Warning text
+        warning_label = tk.Label(main_frame, text=message, bg='#2b2b2b', fg='white', 
+                                font=('Arial', 11), wraplength=350)
+        warning_label.pack(pady=(0, 20))
+
+        # Checkbox for deleting RepoMap.md file
+        delete_repomap_var = tk.BooleanVar()
+        if delete_repomap_option:
+            delete_repomap_checkbox = tk.Checkbutton(main_frame, text="Also delete RepoMap.md file from the folder(s)", 
+                                                    variable=delete_repomap_var, bg='#2b2b2b', fg='white', 
+                                                    selectcolor='#4a4a4a', activebackground='#2b2b2b', 
+                                                    activeforeground='white', font=('Arial', 10))
+            delete_repomap_checkbox.pack(pady=(0, 20))
+
+        # Button frame
+        button_frame = tk.Frame(main_frame, bg='#2b2b2b')
+        button_frame.pack(side=tk.BOTTOM, fill=tk.X)
+
+        def on_confirm():
+            confirm_callback(delete_repomap_var.get())
+            dialog.destroy()
+
+        def on_cancel():
+            dialog.destroy()
+
+        # Buttons
+        cancel_btn = tk.Button(button_frame, text="Cancel", bg='#666666', fg='white', 
+                              bd=0, padx=20, pady=8, command=on_cancel)
+        cancel_btn.pack(side=tk.RIGHT, padx=(10, 0))
+
+        delete_btn = tk.Button(button_frame, text="Delete", bg='#ff6b6b', fg='white', 
+                              bd=0, padx=20, pady=8, command=on_confirm)
+        delete_btn.pack(side=tk.RIGHT)
+
+        # Focus on cancel button for safety
+        cancel_btn.focus_set()
+        
+        # Bind Escape key to cancel
+        dialog.bind('<Escape>', lambda e: on_cancel())
+        
+        # Wait for dialog to close
+        dialog.wait_window()
+
     def remove_folder(self, index):
         """Remove a single folder with confirmation dialog"""
         if index >= len(self.folders):
@@ -875,48 +940,14 @@ class RepomapApp:
         folder_path = folder_info['path']
         folder_name = folder_info['name']
         
-        # Create confirmation dialog
-        dialog = tk.Toplevel(self.root)
-        dialog.title("Delete Folder")
-        dialog.geometry("400x180")
-        dialog.configure(bg='#2b2b2b')
-        dialog.transient(self.root)
-        dialog.grab_set()
-        
-        # Center the dialog
-        dialog.update_idletasks()
-        x = (dialog.winfo_screenwidth() // 2) - (dialog.winfo_width() // 2)
-        y = (dialog.winfo_screenheight() // 2) - (dialog.winfo_height() // 2)
-        dialog.geometry(f"+{x}+{y}")
-        
-        # Main frame
-        main_frame = tk.Frame(dialog, bg='#2b2b2b')
-        main_frame.pack(fill=tk.BOTH, expand=True, padx=20, pady=20)
-        
-        # Warning text
-        warning_text = f"Are you sure you want to remove '{folder_name}' from Repomap?"
-        warning_label = tk.Label(main_frame, text=warning_text, bg='#2b2b2b', fg='white', 
-                                font=('Arial', 11), wraplength=350)
-        warning_label.pack(pady=(0, 20))
-        
-        # Checkbox for deleting RepoMap.md file
-        delete_repomap_var = tk.BooleanVar()
-        delete_repomap_checkbox = tk.Checkbutton(main_frame, text="Also delete RepoMap.md file from the folder", 
-                                                variable=delete_repomap_var, bg='#2b2b2b', fg='white', 
-                                                selectcolor='#4a4a4a', activebackground='#2b2b2b', 
-                                                activeforeground='white', font=('Arial', 10))
-        delete_repomap_checkbox.pack(pady=(0, 20))
-        
-        # Button frame
-        button_frame = tk.Frame(main_frame, bg='#2b2b2b')
-        button_frame.pack(side=tk.BOTTOM, fill=tk.X)
-        
-        def confirm_delete():
+        message = f"Are you sure you want to remove '{folder_name}' from Repomap?"
+
+        def confirm_delete(delete_repomap):
             # Stop watching the folder
             self.stop_watching_folder(folder_path)
             
             # Delete RepoMap.md if checkbox is checked
-            if delete_repomap_var.get():
+            if delete_repomap:
                 repomap_path = os.path.join(folder_path, 'RepoMap.md')
                 try:
                     if os.path.exists(repomap_path):
@@ -936,29 +967,9 @@ class RepomapApp:
             self.save_folders()
             self.update_display()
             self.update_trash_button()
-            dialog.destroy()
-        
-        def cancel_delete():
-            dialog.destroy()
-        
-        # Buttons
-        cancel_btn = tk.Button(button_frame, text="Cancel", bg='#666666', fg='white', 
-                              bd=0, padx=20, pady=8, command=cancel_delete)
-        cancel_btn.pack(side=tk.RIGHT, padx=(10, 0))
-        
-        delete_btn = tk.Button(button_frame, text="Delete", bg='#ff6b6b', fg='white', 
-                              bd=0, padx=20, pady=8, command=confirm_delete)
-        delete_btn.pack(side=tk.RIGHT)
-        
-        # Focus on cancel button for safety
-        cancel_btn.focus_set()
-        
-        # Bind Escape key to cancel
-        dialog.bind('<Escape>', lambda e: cancel_delete())
-        
-        # Wait for dialog to close
-        dialog.wait_window()
-    
+
+        self._show_confirmation_dialog("Delete Folder", message, True, confirm_delete)
+
     def toggle_folder_selection(self, index):
         """Toggle selection of a folder"""
         if index in self.selected_folders:
@@ -973,44 +984,10 @@ class RepomapApp:
         if not self.selected_folders:
             return
         
-        # Create confirmation dialog
-        dialog = tk.Toplevel(self.root)
-        dialog.title("Delete Folders")
-        dialog.geometry("400x200")
-        dialog.configure(bg='#2b2b2b')
-        dialog.transient(self.root)
-        dialog.grab_set()
-        
-        # Center the dialog
-        dialog.update_idletasks()
-        x = (dialog.winfo_screenwidth() // 2) - (dialog.winfo_width() // 2)
-        y = (dialog.winfo_screenheight() // 2) - (dialog.winfo_height() // 2)
-        dialog.geometry(f"+{x}+{y}")
-        
-        # Main frame
-        main_frame = tk.Frame(dialog, bg='#2b2b2b')
-        main_frame.pack(fill=tk.BOTH, expand=True, padx=20, pady=20)
-        
-        # Warning text
         folder_count = len(self.selected_folders)
-        warning_text = f"Are you sure you want to remove {folder_count} folder{'s' if folder_count > 1 else ''} from Repomap?"
-        warning_label = tk.Label(main_frame, text=warning_text, bg='#2b2b2b', fg='white', 
-                                font=('Arial', 11), wraplength=350)
-        warning_label.pack(pady=(0, 20))
-        
-        # Checkbox for deleting RepoMap.md files
-        delete_repomap_var = tk.BooleanVar()
-        delete_repomap_checkbox = tk.Checkbutton(main_frame, text="Also delete RepoMap.md files from the folders", 
-                                                variable=delete_repomap_var, bg='#2b2b2b', fg='white', 
-                                                selectcolor='#4a4a4a', activebackground='#2b2b2b', 
-                                                activeforeground='white', font=('Arial', 10))
-        delete_repomap_checkbox.pack(pady=(0, 20))
-        
-        # Button frame
-        button_frame = tk.Frame(main_frame, bg='#2b2b2b')
-        button_frame.pack(side=tk.BOTTOM, fill=tk.X)
-        
-        def confirm_delete():
+        message = f"Are you sure you want to remove {folder_count} folder{'s' if folder_count > 1 else ''} from Repomap?"
+
+        def confirm_delete(delete_repomap):
             # Stop watching all selected folders
             for index in self.selected_folders:
                 if index < len(self.folders):
@@ -1018,7 +995,7 @@ class RepomapApp:
                     self.stop_watching_folder(folder_path)
                     
                     # Delete RepoMap.md if checkbox is checked
-                    if delete_repomap_var.get():
+                    if delete_repomap:
                         repomap_path = os.path.join(folder_path, 'RepoMap.md')
                         try:
                             if os.path.exists(repomap_path):
@@ -1042,28 +1019,8 @@ class RepomapApp:
             self.save_folders()
             self.update_display()
             self.update_trash_button()
-            dialog.destroy()
-        
-        def cancel_delete():
-            dialog.destroy()
-        
-        # Buttons
-        cancel_btn = tk.Button(button_frame, text="Cancel", bg='#666666', fg='white', 
-                              bd=0, padx=20, pady=8, command=cancel_delete)
-        cancel_btn.pack(side=tk.RIGHT, padx=(10, 0))
-        
-        delete_btn = tk.Button(button_frame, text="Delete", bg='#ff6b6b', fg='white', 
-                              bd=0, padx=20, pady=8, command=confirm_delete)
-        delete_btn.pack(side=tk.RIGHT)
-        
-        # Focus on cancel button for safety
-        cancel_btn.focus_set()
-        
-        # Bind Escape key to cancel
-        dialog.bind('<Escape>', lambda e: cancel_delete())
-        
-        # Wait for dialog to close
-        dialog.wait_window()
+
+        self._show_confirmation_dialog("Delete Folders", message, True, confirm_delete)
     
     def update_trash_button(self):
         """Update trash button state based on selections"""
@@ -1180,73 +1137,12 @@ class RepomapApp:
                 return None
             
             # Use Gemini API to analyze the file
-            model = genai.GenerativeModel('gemini-1.5-flash')
+            model = genai.GenerativeModel(AI_MODEL_NAME)
             
-            prompt = f"""
-            Analyze this code file and return ONLY a valid JSON object with the following structure:
-
-            {{
-                "classes": [
-                    {{
-                        "name": "ClassName",
-                        "description": "brief description of what this class does",
-                        "methods": [
-                            {{
-                                "name": "method_name",
-                                "signature": "method_name(self, param1: type, param2: type) -> return_type",
-                                "description": "what this method does"
-                            }}
-                        ],
-                        "class_variables": [
-                            {{
-                                "name": "variable_name",
-                                "type": "type",
-                                "description": "what this class variable stores"
-                            }}
-                        ]
-                    }}
-                ],
-                "standalone_functions": [
-                    {{
-                        "name": "function_name",
-                        "signature": "function_name(param1: type, param2: type) -> return_type",
-                        "description": "what this standalone function does"
-                    }}
-                ],
-                "module_constants": [
-                    {{"name": "CONSTANT_NAME", "value": "value", "description": "what this constant represents"}}
-                ],
-                "module_variables": [
-                    {{"name": "variable_name", "type": "type", "description": "what this module-level variable stores"}}
-                ]
-            }}
-
-            Rules:
-            - Return ONLY the JSON object, no other text
-            - Group methods under their respective classes
-            - Put functions that are NOT inside classes in "standalone_functions"
-            - Include complete signatures with parameter types and return types
-            - For class methods, include 'self' in the signature
-            - Focus on meaningful descriptions, not obvious ones
-            - For class_variables, include important instance/class variables
-            - For module_constants/variables, only include important ones
-            - If a category is empty, use an empty array []
-            - Keep descriptions concise but informative
-            - Don't describe obvious parameters like 'self'
-            
-            IMPORTANT: For configuration files, data files, or files with simple data structures:
-            - If the file contains lists, dictionaries, or other data structures, describe their purpose
-            - For configuration constants, explain what they configure or control
-            - For data files, describe what kind of data they contain
-            - Even simple files should have meaningful descriptions of their content and purpose
-            - For files that only contain constants or data structures (no classes/functions), put them in module_constants
-            - Examples: DEFAULT_GITIGNORE_PATTERNS should be documented as a module_constant explaining it's a list of gitignore patterns
-            - Configuration constants should be documented with their purpose and what they control
-
-            File: {os.path.basename(file_path)}
-            Content:
-            {content}
-            """
+            prompt = AI_PROMPT_TEMPLATE.format(
+                file_name=os.path.basename(file_path),
+                file_content=content
+            )
             
             response = model.generate_content(prompt)
             response_text = response.text.strip()
@@ -1350,23 +1246,9 @@ class RepomapApp:
         analysis_results = []
         
         # Collect all files to analyze
-        files_to_analyze = []
-        for root, dirs, files in os.walk(folder_path):
-            # Remove ignored directories from dirs list to prevent walking into them
-            dirs[:] = [d for d in dirs if not self.is_ignored(os.path.join(root, d), folder_path, gitignore_patterns)]
-            
-            for file in files:
-                file_path = os.path.join(root, file)
-                
-                # Skip if file should be ignored
-                if self.is_ignored(file_path, folder_path, gitignore_patterns):
-                    continue
-                
-                # Only analyze code files (skip binary files, config files, etc.)
-                if not self.is_code_file(file_path):
-                    continue
-                
-                files_to_analyze.append(file_path)
+        files_to_analyze = [
+            fp for fp in self._walk_repository_files(folder_path) if self.is_code_file(fp)
+        ]
         
         if not files_to_analyze:
             return []
@@ -1375,7 +1257,7 @@ class RepomapApp:
         
         # Use ThreadPoolExecutor for concurrent API requests
         # Limit to 5 concurrent requests to avoid overwhelming the API
-        with ThreadPoolExecutor(max_workers=5) as executor:
+        with ThreadPoolExecutor(max_workers=AI_MAX_WORKERS) as executor:
             # Submit all file analysis tasks
             future_to_file = {
                 executor.submit(self.analyze_file_with_ai, file_path, folder_path, gitignore_patterns): file_path
@@ -1397,16 +1279,8 @@ class RepomapApp:
     
     def is_code_file(self, file_path):
         """Check if a file is a code file that should be analyzed"""
-        code_extensions = {
-            '.py', '.js', '.ts', '.jsx', '.tsx', '.java', '.cpp', '.c', '.h', '.hpp',
-            '.cs', '.php', '.rb', '.go', '.rs', '.swift', '.kt', '.scala', '.clj',
-            '.hs', '.ml', '.fs', '.vb', '.sql', '.r', '.m', '.mm', '.pl', '.sh',
-            '.bash', '.zsh', '.fish', '.ps1', '.bat', '.cmd', '.lua', '.vim',
-            '.el', '.scm', '.rkt', '.dart', '.nim', '.zig', '.v', '.sv', '.vhd'
-        }
-        
         _, ext = os.path.splitext(file_path.lower())
-        return ext in code_extensions
+        return ext in SUPPORTED_CODE_EXTENSIONS
     
     def run(self):
         try:
